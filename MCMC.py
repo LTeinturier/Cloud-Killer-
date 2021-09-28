@@ -12,7 +12,7 @@ import corner
 import scipy.optimize as op
 import emcee
 import init as var
-#import test_gradient as g
+
 ### stat stuff ###
 
 def lnlike(albedo,time,ref,ref_err,timespan,phispan):
@@ -51,88 +51,17 @@ def lnlike(albedo,time,ref,ref_err,timespan,phispan):
     return res
 
 def opt_lnlike(albedo,time,ref,ref_err,timespan, phispan):
-    print("In opt_lnlike")
+    # print("In opt_lnlike")
     nll = lambda *args: - lnlike(*args)
-    #albedo = albedo.reshape((albedo.shape[0]*albedo.shape[1]))
     nslices = var.NUMOFSLICES
-    bound = [(0.000001,1) for i in range(nslices)]
+    bound = [(0.000001,1) for i in range(nslices)] #bounds for the surface albedo
     for i in range(nslices,len(albedo)):
-        bound.append((-6,0)) # bounds for the surface and fclouds
+        bound.append((-6,0)) # bounds for the clouds only
     bound = tuple(bound)
-#    result = op.minimize(nll,albedo,args=(time,ref,ref_err,timespan,phispan),jac =g.grad, bounds = bound)
     result = op.minimize(nll,albedo,args=(time,ref,ref_err,timespan,phispan),method = 'L-BFGS-B', bounds = bound)
     return result["x"]
-#  
-    
+   
 
-#def lnlike_surf(asurf,Delta_A, time, ref, ref_err, timespan, phispan):
-#    """
-#    likelihood used only to optimise the initla value of the surface, in the call
-#    to opt_lnlike_surf
-#    """
-##    nslices = asurf.shape[0]
-#    nday    = Delta_A.shape[0] # comme ca c'est indep de init.py
-#    timepts = len(time)
-#    model_ref = []
-#    #compute TOA alb and the lcurve
-#    t_effalb = M_Init.effectiveAlbedo(asurf,np.exp(Delta_A))
-#    for day in range(nday):
-#        temp_time, temp_ref = M_Init.Forwardmodel(t_effalb[day,:],var.WW,timespan, phispan,
-#                                                  timepts//nday,0, plot = False,
-#                                                  alb = True)
-#        model_ref.append(temp_ref)
-#    model_ref = np.asarray(model_ref).reshape((nday*timepts//nday))
-#    ##comute ln(likelihood) using chisq
-#    chisq_num   = np.power(np.subtract(ref, model_ref),2) #(data-model)^2
-#    chisq_denom = np.power(ref_err,2) #
-#    res = -0.5 * sum(chisq_num/chisq_denom + np.log(2*np.pi) + np.log(np.power(ref_err,2)))
-#    return res
-
-#def opt_lnlike_surf(asurf, Delta_A, time, ref, ref_err, timespan, phispan):
-#    """
-#        Used to optimize only the surface albedo paramter to give a better fit 
-#        outputs a vecteur with acloud, asurf, and a flatten verison of clouds
-#    
-#    """
-#    nll = lambda *args : -lnlike_surf(*args)
-#    nslices = asurf.shape[0]
-#    bound = tuple([(0.000001,0.5) for i in range(nslices)])
-#    result = op.minimize(nll, asurf, args = (Delta_A, time, ref, ref_err, timespan, phispan)
-#                         , method = 'L-BFGS-B', bounds = bound)
-#    opt_asurf = result["x"]
-#    flat_Delta_A = Delta_A.flatten()
-#    albedo = np.append(opt_asurf,flat_Delta_A)
-#    return albedo # vecteur de taille nslices +nslices*nday
-      
-    
-#def lnprior(alpha):
-#    """
-#    Input: guesses for the fit parameters (alpha, an array of albedos,
-#    representing A(phi))
-#    Output: The ln(prior) for a given set of albedos 
-#    """
-#    if np.all(alpha>=0.0) and np.all(alpha[:var.NUMOFSLICES]<0.5) and np.all(alpha[var.NUMOFSLICES:]<0.1): # if valid albedos
-#        return 0.0
-#    return -np.inf # if not, probability goes to 0 
-#def lnprior(alpha,a=1e-4,b=1):
-#    """
-#    this is a log uniform prior on the delta A. The surface parameters still follow a uniform distribution
-#    doesn't work at all
-#    """
-#    if not (np.all(alpha)>=0.0 and np.all(alpha[:var.NUMOFSLICES]<0.5)):
-##        print("surface wrong")
-#        return -np.inf
-#    dA = np.empty(alpha.shape[0]-var.NUMOFSLICES)
-#    distribcoeff= np.log(b)-np.log(a) 
-#    for k in range(var.NUMOFSLICES,len(alpha),1):
-#        dA[k-var.NUMOFSLICES]=np.log(1/(alpha[k]*distribcoeff)) # take the log of the log-uniform distribution and add to the results
-##        print(k,k-var.NUMOFSLICES)
-##    print(dA)
-##    print(np.log(a),np.log(b))
-#    if np.all(dA>=np.log(a)) and np.all(dA<np.log(b)):
-#        return 0.0
-#    else:
-#        return -np.inf
 
 def lnprior(alpha):
     """
@@ -143,6 +72,7 @@ def lnprior(alpha):
     if np.all(surf>=0) and np.all(surf<1.) and np.all(logdA<0) and np.all(logdA>-6): # if valid values no lower bounds on logdA
         return 0.0
     return -np.inf #otherwise probability goes to 0
+
 def lnpost(alpha, time, ref, ref_err,timespan,phispan):
     """
     Input: guesses for the fit parameters (alpha, an array of albedos,
@@ -192,25 +122,19 @@ def init_walkers(alpha, time, ref, ref_err, ndim, nwalkers,timespan,phispan):
     Output: the initial positions of all walkers in the ndim-dimensional 
     parameter space
     """
-#    nslices =var.NUMOFSLICES
-    ## minimization over the surface only
-#    asurf  = alpha[:nslices]
-#    Delta_A = alpha[nslices:].reshape((var.DAYS,nslices))
-#    opt_albs_0    = opt_lnlike_surf(asurf, Delta_A, time, ref, ref_err, timespan,phispan)
-        ##global minimization
-#    opt_albs = opt_lnlike(opt_albs_0, time, ref, ref_err,timespan,phispan) # mazimize likelihood
+
     opt_albs = opt_lnlike(alpha, time, ref, ref_err,timespan,phispan)
     print("Initial guess before MCMC :")
-    print(opt_albs)
-    np.savetxt("beforeMCMC.txt",opt_albs)
+    # print(opt_albs)
+    np.savetxt("beforeMCMC.txt",opt_albs) #generate a txt file with the parameters before the MCMC
         # generate walkers in Gaussian ball
     pos = np.array([opt_albs + 1e-2*np.random.randn(ndim) for i in range(nwalkers)])
     compteur=0
-    for nw in range(nwalkers):
+    for nw in range(nwalkers): #corrects if the gaussian ball is to large
         if lnprior(pos[nw,:])==-np.inf:
             pos[nw,:]=np.array([opt_albs+1e-4*np.random.randn(ndim)])
             compteur+=1
-    print("nbr of corrected walkers : {}".format(compteur))
+
     
     return pos
 
@@ -240,8 +164,7 @@ def make_chain(nwalkers, nsteps, ndim, t,r,r_err,timespan,phispan,alb=True):
     print ("Got my albedo, Thank you!")
     nslices = var.NUMOFSLICES # number of slices
     nday    = var.DAYS        # number of day the simulation is running
-    # guess: alb is 0.25 for the surface albedo, 0.8 for the clouds albedo and 
-    # we call M_init.cloudcoverage to determine the cloud fraction
+    # guess: alb is 0.25 for the surface albedo
     surf = [0.1 for n in range(nslices)]
     Delta_A = np.log(0.9*np.random.rand(nday*nslices)) # Ln of a random init
     init_guess = np.append(surf,Delta_A)
@@ -284,8 +207,6 @@ def MCMC(nwalkers,nsteps,numOfSlices,time,app,app_err,timespan,phispan,burning):
     nday  = var.DAYS 
     ndim  = numOfSlices + numOfSlices * nday #asurf,  serie of fclouds (nslices parameters per day ie nslices*nday)
     chain = make_chain(nwalkers,nsteps,ndim,time,app,app_err,timespan,phispan,alb = True)
-#    init_pos = make_chain(nwalkers, nsteps, ndim, time, app,app_err, timespan,phispan, alb = True)
-#    return init_pos
     print("chain is made")
     
     mean_mcmc_params = mcmc_results(chain,burning)
@@ -303,7 +224,6 @@ def MCMC(nwalkers,nsteps,numOfSlices,time,app,app_err,timespan,phispan,burning):
                                                              n=5000,plot=False,alb=True)
         mean_mcmc_ref.append(temp_mean_mcmc)
         mean_mcmc_time.append(temp_mean_time+24*day)
-       # print("for day {}, first value of time is {} while the last value of time is {}".format(day,mean_mcmc_time[day][0],temp_mean_time[day][-1]))
     
     print("The MCMC is computed ! ")
     mean_mcmc_ref    = np.asarray(mean_mcmc_ref)
@@ -312,88 +232,6 @@ def MCMC(nwalkers,nsteps,numOfSlices,time,app,app_err,timespan,phispan,burning):
     
     return mean_mcmc_time, mean_mcmc_ref, mean_mcmc_albedo,chain
 
-def plot_walkers_all(chain,expAlb=None):
-    """
-    Input: an emcee sampler chain
-    
-    Plots the paths of all walkers for all dimensions (parameters). Each 
-    parameter is represented in its own subplot.
-    
-    Output: None
-    """
-    nsteps = chain.shape[1] # number of steps taken
-    ndim = chain.shape[2] # number of params being fit
-    step_number = [x for x in range(1, nsteps+1)] # steps taken as an array
-    
-    # plot the walkers' paths
-    fig = plt.figure()
-    plt.subplots_adjust(hspace=0.1)
-    for n in range(ndim):   # for each param
-        paths = walker_paths_1dim(chain, n) # obtain paths for the param
-        fig.add_subplot(ndim,1,n+1) # add a subplot for the param
-        for p in paths:
-            if n is not ndim-1:
-                plt.tick_params(axis='x',which='both',bottom=False,top=False,labelbottom=False)
-                plt.tick_params(labelsize=20)
-
-            else:
-                plt.xlabel("Steps",fontsize=20)
-                plt.tick_params(labelsize=20)
-            plt.ylabel(r"$A$"+"[%d]"%(n),fontsize=20)
-            plt.plot(step_number, p,color='k',alpha=0.3) # all walker paths
-            if type(expAlb)!=type(None):
-                plt.axhline(expAlb[n],color='red',linewidth=1) #Draw the expected value
-            plt.xlim([0,nsteps])
-
-def walker_paths_1dim(chain, dimension):
-    """
-    Input: an emcee sampler chain and the dimension (parameter, beginning 
-    at 0 and ending at ndim-1) of interest
-    
-    Builds 2D array where each entry in the array represents a single walker 
-    and each subarray contains the path taken by a particular walker in 
-    parameter space. 
-    
-    Output: (nwalker x nsteps) 2D array of paths for each walker
-    """
-    
-    ndim = len(chain[0][0])
-    # if user asks for a dimension larger than the number of params we fit
-    if (dimension >  (ndim-1)): 
-        print("\nWarning: the input chain is only %d-dimensional. Please \
-              input a number between 0 and %d. Exiting now."%(ndim,(ndim-1)))
-        return
-        
-    nwalkers = len(chain)  # number of walkers
-    nsteps = len(chain[0]) # number of steps taken
-
-    # obtain the paths of all walkers for some dimension (parameter)
-    walker_paths = []
-    for n in range(nwalkers): # for each walker
-        single_path = [chain[n][s][dimension] for s in range(nsteps)] # 1 path
-        walker_paths.append(single_path) # append the path
-    return walker_paths
-
-def cornerplot(chain, burnin,surf):
-    """
-    Input: an emcee sampler chain and the steps taken during the burnin
-    
-    Produces a corner plot for the fit parameters. 
-    
-    Output: None
-    """
-    ndim = len(chain[0][0]) # number of params being fit
-    samples = flatten_chain(chain, burnin) # flattened chain, post-burnin
-    
-    label_albs = [] # setting the labels for the corner plot
-    for n in range(ndim):
-        label_albs.append(r"$A$"+"[%d]"%(n)) # A[0], A[1], ...
-    
-    plt.rcParams.update({'font.size':12}) # increased font size
-    
-    # include lines denoting the 16th, 50th (median) and 84th quantiles     
-    corner.corner(samples, labels=label_albs, quantiles=(0.16, 0.5, 0.84), 
-                  levels=(1-np.exp(-0.5),),show_titles=False,truth_color='#FFD43B',truth = [surf[0],surf[1],surf[2],surf[3]])
 
 def mcmc_percentiles(chain, burnin, pers=[16,84]):
     """

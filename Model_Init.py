@@ -1,83 +1,10 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 import random as ran 
-import cartopy.crs as ccrs
+# import cartopy.crs as ccrs
 import init as var
 import Utilities as util
 
-#Model initialization
-def Eckert(albedo,numOfSlices,nlats=400,nlons=400,fig=None,bar=None,
-    plot=True,data=False,figtitle = None):
-    """
-    General function to plot the Eckert map based off the number of 
-    slices
-    Input(s):
-        albedo: takes in the albedo value at each longitudinal slices.
-        numOfSlices: number of longitudinal slices.
-        nlats, nlons = Used for the contour function. Basically, how 
-                       many points to plot in the Eckert projection. 
-                       (Default to 400, I do not recommend changing it!)
-        fig (Default to None): This is for animation, since the animation function updates
-             the fig, it needs the previous iteration. 
-        bar (Default to None): The color bar on the side. Again for the animation to keep 
-             the bar constant and not changing between frames.
-        plot (Default to TRUE): if TRUE, plots the Eckert project, else
-             returns longitudes, gridlines and the albedos. 
-       figtitle : If we want a figtitle, defaul is None
-    Output(s): 
-        EckertIV map projection of the results for a general number 
-        of slices.
-    """
-    mod = nlons%numOfSlices 
-    if (mod==0):
-        interval = int(nlons/numOfSlices)
-    else: 
-        interval = int(nlons/numOfSlices)
-        nlons=nlons-mod
-        nlons = nlons-mod
-    longitude = np.rad2deg(np.linspace(2*np.pi,0,nlons))
-    lattitude = np.rad2deg(np.linspace(-np.pi/2,np.pi/2,nlats))
-    lattitude, longitude = np.meshgrid(lattitude,longitude)
-    w = 0
-    A = []
-    a_dumb = []
-    gridlines=[360]
-    for i in range(nlons):
-        if (w == len(albedo)):
-            break
-        temp = [albedo[w] for j in range(nlats)]
-        temp_dum = [np.random.randint(0,2) for j in range(nlats)]
-        if i%interval==0 and i!=0:
-            w=w+1
-            gridlines.append(longitude[i][0])
-        A.append(temp)
-        a_dumb.append(temp_dum)
-    gridlines.append(0)
-    if plot == False:
-        return longitude,lattitude,A,gridlines
-    if type(fig)==type(None):
-        fig = plt.figure(figsize=(12,6))
-    else:
-        fig = fig
-    ax = fig.add_subplot(1,1,1,projection = ccrs.EckertIV())
-    ax.clear()
-    cs = ax.contourf(longitude,lattitude,A,transform=ccrs.PlateCarree(),
-        cmap='gray',alpha=0.3)
-    if type(figtitle) != type(None):
-        ax.set_title(figtitle,fontsize=22)
-    if data: 
-        return cs
-    #SET MAX OF COLORBAR TO 1
-    cbar = fig.colorbar(cs)
-#    cbar.ax.set_ylabel(r'Albedo $A$',fontsize = 20)
-    cbar.ax.tick_params(labelsize=20)
-    ax.coastlines()
-    gl = ax.gridlines(crs=ccrs.PlateCarree(),color='black',linewidth=1.5, xlocs = gridlines) 
-    gl.ylines = False
-    ax.set_global()
-#    plt.savefig("EPICresultsmap.pdf",format = 'pdf',dpi = 1500)
-    #plt.show()
-    return longitude,lattitude,A,cs,fig,ax,gridlines
 
 def timeToLongitude(time):
     """
@@ -95,49 +22,6 @@ def timeToLongitude(time):
     longitude = [np.rad2deg((2*np.pi-(t%86400.0)*(2*np.pi/86400.0))) for t in time]
     return longitude
 
-def initialPlanet(numOfSlices,plot=True):
-    """
-    Initializes surface map of an arbitrary planet with random values
-    of albedos. The surface map will be divided into the given number
-    of slices. 
-    
-    Input(s):
-        numOfSlices: number of slices of the simulation
-        plot (Default to TRUE): if TRUE, will plot a Eckert projection map of the generated map
-    Output(s): 
-        A dictionary of albedo and slice number. See github documentation for how the slices are defined.  
-    """
-    planet = {}
-    sliceNum = range(numOfSlices)
-    albedo = [0.5*ran.random() for i in range(numOfSlices)] #albedo is between 0 and 0.5
-    if plot:
-        Eckert(albedo,len(albedo),figtitle = "initial surface albedo map")
-        plt.show()
-    for i in sliceNum:
-        planet[i] = albedo[i]
-    return planet
-
-def cloudCoverage(numOfSlices): 
-    """
-    Function that generates an initial cloud coverage over the slices. 
-    Input(s):
-        nmOfSlices: Number of slices
-    Output(s): 
-        Random values of cloud coverage ranging from 0 to 1. "1" being
-        complete cloud cover and 0 having no clouds. 
-    """
-    #If boolean Slice is 1, it will generate a random value between 0 and 1
-    #on that slice, else it wont generate cloud over that slice. 
-    #booleanSlice = [ran.randint(0,1) for i in range(numOfSlices)]
-    clouds = np.zeros(numOfSlices)
-    for i in range(numOfSlices):
-        #if booleanSlice[i]==1:
-        clouds[i] = 0.5 *ran.random() # clouds is between 0 and 0.5
-#        clouds[i] = ran.random() # clouds is between 0 ans 1
-#        clouds[i] = 0.0 # no clouds in data scenario
-#        else:
-#            clouds[i] = 0
-    return clouds
 
 #In[]
 #Forward model defined in the paper 
@@ -305,5 +189,3 @@ def effectiveAlbedo(Asurf,Delta_A):
     return effAlb
 
 
-#Eckert([0.2376,0.228673,0.18367,0.27335],4)
-#plt.show()

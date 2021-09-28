@@ -15,29 +15,6 @@ import MCMC as m
 import Utilities as util
 
 
-def dataAlbedoDynamic(numOfSlices,Days,Acloud,surf):
-    """
-    Inputs : numOfSlices : number of slices
-             Days : number of days of simulations
-             w : roational speed of the planet
-             Acloud : Albedo of the clouds
-             surf : An array of surface albedo at each 
-             
-    Outputs : ts_effalb : time series of the effetive albedo computed
-              ts_clouds = time series of the cloud covering fraction
-                
-    """
-    ts_effalb=[] # time series of effective albedo
-    ts_clouds = []
-                  
-    for i in range(1,Days+1):
-        clouds = M_init.cloudCoverage(numOfSlices)
-        effalb = M_init.effectiveAlbedo(numOfSlices,Acloud,False,calClouds = clouds,calsurf = surf)
-        ts_effalb.append(effalb)
-        ts_clouds.append(clouds)
-    ts_effalb = np.asarray(ts_effalb)
-    ts_clouds = np.asarray(ts_clouds)
-    return ts_effalb, ts_clouds
     
 def extractN(time,apparent,n,Day):
     """
@@ -98,7 +75,7 @@ def RunSatellowan(numOfSlices,nslices_data, Acloud,w,ndata,Days,nwalkers,nsteps,
             a_err = EPIC[3]
             t     = (t-t[0])*24
             Delta_A = np.zeros((Days,numOfSlices))
-            surf = np.zeros(numOfSlices) #so there's no mistakes when run on EPIC data
+            surf = np.zeros(numOfSlices) #so there's no mistakes when run on EPIC data. Will be saved in netcdf as a vector filled with zeros
 
 
         if (mcmc):
@@ -116,22 +93,16 @@ def RunSatellowan(numOfSlices,nslices_data, Acloud,w,ndata,Days,nwalkers,nsteps,
                 return t,mcmc_surf_alb,mcmc_Delta_A,mean_mcmc_effAlb, mean_mcmc_lcurve,surf,Delta_A, effAlb, a, percentile, chain, a_err
             else: 
                 return t,mcmc_surf_alb,mcmc_Delta_A,mean_mcmc_effAlb, mean_mcmc_lcurve, a, percentile, chain, a_err
-            #else : return mcmc_surf_alb, mcmc_cloudAlb,mcmc_fclouds,mean_mcmc_effAlb, mean_mcmc_lcurve,a, percentile, chain, a_err
-        else: #que sur des synthetic data attention.
-            # what I used to do
-#            key = "{}".format(repetition)
-            #dic[key] = chain
-            # what I do now that i only want mcmcsurf and percentile
-            ## IL FAUT CLAIRMENT RAJOUTER LE ACLOUD !!!!!!
+        else: 
             results = m.mcmc_results(chain,burning)
             dic['mcmcsurf{}'.format(repetition)]     = np.asarray(results[:numOfSlices])
             dic["surf{}".format(repetition)]         = surf
             dic["Delta_A{}".format(repetition)]      = Delta_A
             dic["mcmc_Delta_A{}".format(repetition)] = np.asarray(results[numOfSlices:]).reshape((Days,numOfSlices))
-            dic['percentile{}'.format(repetition)]   = m.mcmc_percentiles(chain,burning) # on prend tous les percentiles ici
+            dic['percentile{}'.format(repetition)]   = m.mcmc_percentiles(chain,burning) 
             dic["chain{}".format(repetition)]        = chain
             dic["th_lc{}".format(repetition)]        = a
             dic["th_lc_err{}".format(repetition)]    = a_err
             repetition +=1
-    return dic#, surf,clouds,effAlb,a,a_err # clairement on perd de l'info dans le repeat mais pas grave
+    return dic 
     
